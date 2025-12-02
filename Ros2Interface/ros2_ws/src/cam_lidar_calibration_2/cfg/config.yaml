@@ -1,0 +1,40 @@
+#Camera configuration
+camera:
+
+  image_size:
+    width: 1400
+    height: 1000
+    
+  simulated_image_size:
+    width: 1400
+    height: 1000
+
+  camera_topic: "/cam/image_color"
+  simulation_camera_topic: "/cam/image_color"
+  
+
+
+lidar:
+
+  #Velodyne Coord System
+  lidar_coord_system:
+    right: [0.0,-1.0,0.0]
+    up: [0.0,0.0,1.0]
+    front: [1.0,0.0,0.0]
+
+  maximum_expected_points_number: 60001
+
+  lidar_topic: "/lidarsim/points"
+  simulation_lidar_topic: "/lidarsim/points"
+
+  #OpenGL coord system
+  #lidar_coord_system:
+  #  right: [1.0,0.0,0.0]
+  #  up: [0.0,1.0,0.0]
+  #  front: [0.0,0.0,-1.0]
+  
+  #ROS coord system
+  #lidar_coord_system:
+  #  right: [0.0,-1.0,0.0]
+  #  up: [0.0,0.0,1.0]
+  #  front: [1.0,0.0,0.0]

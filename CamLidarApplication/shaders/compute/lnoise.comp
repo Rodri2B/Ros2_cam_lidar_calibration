@@ -1,0 +1,96 @@
+#version 460 core
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+
+
+
+uint jenkins_hash(uint x) {
+    x += (x << 10u);
+    x ^= (x >>  6u);
+    x += (x <<  3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
+
+float hash_jenkins(float f) {
+    uint x = floatBitsToUint(f);
+    return float(jenkins_hash(x)) * (1.0 / 4294967296.0);
+}
+
+
+float boxMuller(float u1, float u2){
+    if(u1 == 0) u1 = 0.00001;
+    float r   = sqrt(-2.0*log(u1));
+    float phi = 6.28318530718 * u2;
+    return r*cos(phi);
+}
+
+struct Direction {
+    vec4 direction;
+};
+
+struct Point_XYZIR {
+    float x;
+    float y;
+    float z;
+    float intensity;
+    uint ring;
+    uint padding[3];
+};
+
+//or layout (std430, binding = 0)
+layout (std430) buffer data_dir
+{
+    Direction directions[];
+};
+
+layout (std430) buffer data_point
+{
+    Point_XYZIR points[];
+};
+
+uniform uint points_num;
+uniform float time;
+uniform float lidar_precision;
+
+float mean = 0;
+//float variance = 0.001;
+float standard_deviation = lidar_precision/2;
+
+
+void main(){
+
+    uvec3 gid = gl_GlobalInvocationID;                                // :contentReference[oaicite:6]{index=6}
+    uint sizeX = gl_NumWorkGroups.x * gl_WorkGroupSize.x;             // :contentReference[oaicite:7]{index=7}
+    uint sizeY = gl_NumWorkGroups.y * gl_WorkGroupSize.y;             // :contentReference[oaicite:8]{index=8}
+    uint GlobalIndex = gid.x                                             
+               + gid.y * sizeX                                    
+               + gid.z * (sizeX * sizeY);                
+
+    if(GlobalIndex < points_num){
+        
+        vec3 direction = directions[GlobalIndex].direction.xyz;
+
+        float pos_seed = 1000.0*(direction.x + direction.y + direction.z);
+        pos_seed = (pos_seed >= 0.0) ? pos_seed : -1.37*pos_seed;
+        //vec3 offs_pos = aPos + direction*offset;
+
+        float step_time = mod(2.347*floor(time/0.1),10000.0);
+
+        float rand_num1 = hash_jenkins(pos_seed+step_time);
+        float rand_num2 = hash_jenkins(pos_seed+5000.0+step_time);
+
+        //float noise = mean + sqrt(variance)*boxMuller(rand_num1,rand_num2);
+        float noise = mean + standard_deviation*boxMuller(rand_num1,rand_num2);
+
+        vec3 dir_noise = noise*direction;
+
+        points[GlobalIndex].x = points[GlobalIndex].x + dir_noise.x;
+        points[GlobalIndex].y = points[GlobalIndex].y + dir_noise.y;
+        points[GlobalIndex].z = points[GlobalIndex].z + dir_noise.z;
+        
+    }
+    else{
+        return;
+    }
+}

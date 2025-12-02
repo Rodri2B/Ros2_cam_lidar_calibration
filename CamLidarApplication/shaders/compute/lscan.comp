@@ -1,0 +1,232 @@
+#version 460 core
+layout(local_size_x = 8, local_size_y = 4, local_size_z = 1) in;
+
+
+struct Triangle{
+    vec3 p0;
+    vec3 p1;
+    vec3 p2;
+};
+
+struct Direction {
+    vec4 direction;
+};
+
+//struct Vertex {
+//    vec3 position;
+//    vec3 normal;
+//    vec2 uv;
+//};
+
+struct Point_XYZIR {
+    float x;
+    float y;
+    float z;
+    float intensity;
+    uint ring;
+    uint padding[3];
+};
+
+//or layout (std430, binding = 0)
+layout (std430) buffer data_dir
+{
+    Direction directions[];
+};
+
+layout (std430) buffer data_point
+{
+    Point_XYZIR points[];
+};
+
+float lidar_dir_offset = 0.0; //uniform
+uniform float range; //uniform
+float point_infinity = range + 50.0;
+
+//mandar matriz do lidar com a model 
+//uniform vec3 l_origin; //not used
+uniform uint points_num;
+uniform uint triangles_num;
+uniform mat4 model;
+uniform mat4 inverse_lidar_model;
+
+layout(std430, binding = 2) buffer VertexBuffer {
+    float vertices[];
+};
+
+layout(std430, binding = 3) buffer IndexBuffer {
+    uint indices[];
+};
+
+//shared uint i;
+
+void RayIntersect(Triangle tri_points, uint dir_index){
+
+    vec3 dir_vec = directions[dir_index].direction.xyz;
+
+    vec3 ab = tri_points.p1-tri_points.p0;
+    vec3 ac = tri_points.p2-tri_points.p0;
+    vec3 bc = tri_points.p2-tri_points.p1;
+    vec3 ca = tri_points.p0-tri_points.p2;
+
+    vec3 vec_normal = normalize(cross(ab,ac));
+    float t_multi = (dot(vec_normal,tri_points.p0)/dot(vec_normal,dir_vec));
+    vec3 hit_point = t_multi*dir_vec;
+
+    float point_norma = abs(t_multi);//sqrt(dot(hit_point,hit_point));
+
+    if((point_norma <= range) && (t_multi >= 0))
+    {
+
+        if(((dot(vec_normal,cross(ab,hit_point - tri_points.p0)) > 0) && (dot(vec_normal,cross(bc,hit_point - tri_points.p1)) > 0) &&
+        (dot(vec_normal,cross(ca,hit_point - tri_points.p2)) > 0)) || ((dot(vec_normal,cross(ab,hit_point - tri_points.p0)) < 0) &&
+        (dot(vec_normal,cross(bc,hit_point - tri_points.p1)) < 0) && (dot(vec_normal,cross(ca,hit_point - tri_points.p2)) < 0)))
+        {
+
+            vec3 last_point = vec3(points[dir_index].x, points[dir_index].y, points[dir_index].z);
+            float point_last_norma = sqrt(dot(last_point, last_point));
+
+            if(point_norma < point_last_norma){
+                points[dir_index].x = hit_point.x;
+                points[dir_index].y = hit_point.y;
+                points[dir_index].z = hit_point.z;
+                //points[dir_index].x = dir_vec.x;
+                //points[dir_index].y = dir_vec.y;
+                //points[dir_index].z = dir_vec.z;
+            }
+
+        }
+    }
+}
+
+uint stride = 8;
+uint offset = 0;
+
+
+///////////////////// Noise ///////////////////////
+
+uniform uint  compute_op_flag;
+uniform float time;
+uniform float lidar_precision;
+
+float mean = 0;
+//float variance = 0.001;
+
+uint jenkins_hash(uint x) {
+    x += (x << 10u);
+    x ^= (x >>  6u);
+    x += (x <<  3u);
+    x ^= (x >> 11u);
+    x += (x << 15u);
+    return x;
+}
+
+float hash_jenkins(float f) {
+    uint x = floatBitsToUint(f);
+    return float(jenkins_hash(x)) * (1.0 / 4294967296.0);
+}
+
+
+float boxMuller(float u1, float u2){
+    if(u1 == 0) u1 = 0.00001;
+    float r   = sqrt(-2.0*log(u1));
+    float phi = 6.28318530718 * u2;
+    return r*cos(phi);
+}
+
+//////////////////////////////////////////////////
+
+
+void main(){
+    //uint GlobalIndex = (gl_WorkGroupID.z*gl_NumWorkGroups.x*gl_NumWorkGroups.y + 
+    //                    gl_WorkGroupID.y*gl_NumWorkGroups.x + 
+    //                    gl_WorkGroupID.x) * gl_WorkGroupSize.x*gl_WorkGroupSize.y*gl_WorkGroupSize.z + 
+    //                    gl_LocalInvocationIndex;
+
+    // Compute the global 1D index correctly across X and Y
+
+    uvec3 gid = gl_GlobalInvocationID;                                // :contentReference[oaicite:6]{index=6}
+    uint sizeX = gl_NumWorkGroups.x * gl_WorkGroupSize.x;             // :contentReference[oaicite:7]{index=7}
+    uint sizeY = gl_NumWorkGroups.y * gl_WorkGroupSize.y;             // :contentReference[oaicite:8]{index=8}
+    uint GlobalIndex = gid.x                                             
+               + gid.y * sizeX                                    
+               + gid.z * (sizeX * sizeY);                
+
+    if((GlobalIndex < points_num) && (compute_op_flag == 0)){
+
+        Triangle tri;
+        
+        for(uint i = 0; i < triangles_num;i++){
+
+            uint vert_index = i*3;
+
+            tri.p0 = (inverse_lidar_model*model*vec4(
+                        vertices[stride*indices[vert_index] + offset],
+                        vertices[stride*indices[vert_index] + offset + 1],
+                        vertices[stride*indices[vert_index] + offset + 2], 1.0)).xyz;
+
+            tri.p1 = (inverse_lidar_model*model*vec4(
+                        vertices[stride*indices[vert_index + 1] + offset],
+                        vertices[stride*indices[vert_index + 1] + offset + 1],
+                        vertices[stride*indices[vert_index + 1] + offset + 2], 1.0)).xyz;
+            
+            tri.p2 = (inverse_lidar_model*model*vec4(
+                        vertices[stride*indices[vert_index + 2] + offset],
+                        vertices[stride*indices[vert_index + 2] + offset + 1],
+                        vertices[stride*indices[vert_index + 2] + offset + 2], 1.0)).xyz;
+
+
+            //if(GlobalIndex == 0){
+            //    points[3*i].x = tri.p0.x;
+            //    points[3*i].y = tri.p0.y;
+            //    points[3*i].z = tri.p0.z;
+
+            //    points[3*i+1].x = tri.p1.x;
+            //    points[3*i+1].y = tri.p1.y;
+            //    points[3*i+1].z = tri.p1.z;
+
+            //    points[3*i+2].x = tri.p2.x;
+            //    points[3*i+2].y = tri.p2.y;
+            //    points[3*i+2].z = tri.p2.z;
+            //}
+
+            RayIntersect(tri, GlobalIndex);
+
+
+        }
+
+        //memoryBarrierShared();
+        //barrier();
+    
+    }
+    else if((GlobalIndex < points_num) && (compute_op_flag == 1)){
+        points[GlobalIndex].x = point_infinity;
+        points[GlobalIndex].y = point_infinity;
+        points[GlobalIndex].z = point_infinity;
+    }
+    else if((GlobalIndex < points_num) && (compute_op_flag == 2)){
+
+        vec3 direction = directions[GlobalIndex].direction.xyz;
+
+        float pos_seed = 1000.0*(direction.x + direction.y + direction.z);
+        pos_seed = (pos_seed >= 0.0) ? pos_seed : -1.37*pos_seed;
+        //vec3 offs_pos = aPos + direction*offset;
+
+        float step_time = mod(2.347*floor(time/0.1),10000.0);
+
+        float rand_num1 = hash_jenkins(pos_seed+step_time);
+        float rand_num2 = hash_jenkins(pos_seed+5000.0+step_time);
+
+        //float noise = mean + sqrt(variance)*boxMuller(rand_num1,rand_num2);
+        float standard_deviation = lidar_precision/2.0;
+        float noise = mean + standard_deviation*boxMuller(rand_num1,rand_num2);
+
+        vec3 dir_noise = noise*direction;
+
+        points[GlobalIndex].x = points[GlobalIndex].x + dir_noise.x;
+        points[GlobalIndex].y = points[GlobalIndex].y + dir_noise.y;
+        points[GlobalIndex].z = points[GlobalIndex].z + dir_noise.z;
+    }
+    else{
+        return;
+    }
+}

@@ -1,0 +1,730 @@
+#pragma once
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/matrix_transform_2d.hpp>
+#include <glm/gtx/euler_angles.hpp>
+
+#include <learnopengl/shader.h>
+
+//std::string default_shader_path = "../shaders/default/";
+//Shader default_shader((default_shader_path+"default_sh.vs").c_str(), (default_shader_path+"default_sh.fs").c_str());
+
+namespace Plane{
+
+    float Vertices[32] = {
+    // positions      //normals     //coords
+   -0.5,  0.0, -0.5,  0.0, 1.0, 0.0 ,0.0, 0.0, // bottom left
+    0.5,  0.0, -0.5,  0.0, 1.0, 0.0 ,1.0, 0.0, // bottom right
+    0.5,  0.0,  0.5,  0.0, 1.0, 0.0 ,1.0, 1.0, // top right
+   -0.5,  0.0,  0.5,  0.0, 1.0, 0.0 ,0.0, 1.0, // top left
+							
+    };
+
+    unsigned int Indices[6] = {0, 2, 3, 2, 0, 1};
+};
+
+
+struct object_config_t 
+{
+
+    glm::vec3 position;
+    glm::vec3 rotation;
+    glm::vec3 scale;
+    glm::vec2 position_tex;
+    float rotation_tex; 
+    glm::vec2 scale_tex;
+    glm::mat4 model_m_ref;
+    Shader &dshader;
+
+};
+
+
+enum draw_mode {
+    DRAW_UNTEXTURED,
+    DRAW_TEXTURED,
+    DRAW_UNTEXTURED_INSTANCED,
+    DRAW_TEXTURED_INSTANCED
+
+};
+
+class plane
+{
+
+public:
+    plane(Shader &dshader, unsigned int dmode = DRAW_UNTEXTURED);
+    plane(const glm::vec3 &pos, Shader &dshader, unsigned int dmode = DRAW_UNTEXTURED);
+    plane(const glm::vec3 &pos, const glm::vec3 &rot, Shader &dshader, unsigned int dmode = DRAW_UNTEXTURED);
+    plane(const glm::vec3 &pos, const glm::vec3 &rot, const glm::vec3 &scale, Shader &dshader, unsigned int dmode = DRAW_UNTEXTURED);
+    plane(const object_config_t &config, unsigned int dmode = DRAW_UNTEXTURED);
+    
+    void Draw();
+
+    void setInstancePosBuffer(const unsigned int &buffer, const unsigned int &amount);
+
+    void SetDrawMode(unsigned int mode);
+    void SetTexture(unsigned int TexIndex);
+    void SetTransform();
+    void SetProjection(glm::mat4 &projection);
+    void SetView(glm::mat4 &projection);
+    void SetTextureTransform();
+    void SetViewProjUBuffer(unsigned int biding);
+    void ScaleTexture(const glm::vec2 &scale_vector);
+    void RotateTexture(const float &angle);
+    void PositionateTexture(const glm::vec2 &position_new);
+    void GlobalScale(const glm::vec3 &scale_vector);
+    void GlobalRotate(const float roll, const float pitch, const float yaw);
+    void Scale(const glm::vec3 &scale_vector);
+    void Rotate(float angle,const glm::vec3 &rot_vector);
+    void Rotate(const float roll, const float pitch, const float yaw);
+    void Rotate(const glm::vec3 rot);
+    void Tanslate(const glm::vec3 &translation);
+    void ApplyAllTransfoms();
+    void ApplyRotation();
+    void ApplyTranslation();
+    void ApplyScale();
+    glm::vec3 Get_rotation();
+    glm::vec3 Get_position();
+    glm::vec3 Get_scale();
+    glm::mat4 Get_model_matrix();
+    glm::mat4 Get_reference_model_matrix();
+    void Change_rotation(const glm::vec3 &rotation_new);
+    void Change_position(const glm::vec3 &position_new);
+    void Change_scale(const glm::vec3 &scale_vector);
+    void Change_reference_model_matrix(const glm::mat4 &new_model);
+    void Reset_reference_model_matrix();
+
+    unsigned int Texture;
+    Shader &localShader;
+
+
+private:
+
+    void Init();
+
+    void draw_untextured();
+    void draw_textured();
+    void draw_untextured_instanced();
+    void draw_textured_instanced();
+
+    //use (p.*Draw)(); out of the class
+    void (plane::*Draw_method)();
+
+    unsigned int planeVAO;
+    unsigned int planeVBO;
+    unsigned int planeEBO;
+
+    unsigned int planeABO;
+    unsigned int amount_i;
+
+    glm::mat4 model_m = glm::mat4(1.0f);
+    glm::mat4 model_m_ref = glm::mat4(1.0f);
+
+    glm::vec3 position = glm::vec3(0.0f,0.0f,0.0f);
+    glm::mat4 local_pos_matrix = glm::mat4(1.0f);
+
+    glm::vec3 rotation = glm::vec3(0.0f,0.0f,0.0f); //roll, pith, yaw or x,y,z
+    glm::mat4 local_rot_matrix = glm::mat4(1.0f);
+
+    glm::vec3 scale = glm::vec3(1.0f,1.0f,1.0f);
+    glm::mat4 local_scale_matrix;
+
+    glm::mat3 model_m_tex = glm::mat3(1.0f);
+
+    glm::vec2 position_tex = glm::vec2(0.0f,0.0f);
+    glm::mat3 local_pos_matrix_tex = glm::mat3(1.0f);
+
+    float rotation_tex = 0.0f; 
+    glm::mat3 local_rot_matrix_tex = glm::mat3(1.0f);
+
+    glm::vec2 scale_tex = glm::vec2(1.0f,1.0f);
+    glm::mat3 local_scale_matrix_tex = glm::mat3(1.0f);
+
+
+};
+
+plane::plane(Shader &dshader, unsigned int dmode):
+localShader(dshader)
+{
+    SetDrawMode(dmode);
+    Init();
+}
+
+plane::plane(const glm::vec3 &pos,Shader &dshader, unsigned int dmode):
+localShader(dshader)
+{
+    Change_position(pos);
+    SetDrawMode(dmode);
+    Init();
+}
+
+plane::plane(const glm::vec3 &pos, const glm::vec3 &rot, Shader &dshader, unsigned int dmode):
+localShader(dshader)
+{   
+    Change_rotation(rot);
+    Change_position(pos);
+    SetDrawMode(dmode);
+    Init();
+}
+
+plane::plane(const glm::vec3 &pos, const glm::vec3 &rot, const glm::vec3 &scale, Shader &dshader, unsigned int dmode):
+localShader(dshader)
+{   
+    Change_scale(scale);
+    Change_rotation(rot);
+    Change_position(pos);
+    SetDrawMode(dmode);
+    Init();
+}
+
+plane::plane(const object_config_t &config, unsigned int dmode):
+localShader(config.dshader)
+{
+
+    Change_scale(config.scale);
+    Change_rotation(config.rotation);
+    Change_position(config.position);
+
+    ScaleTexture(config.scale_tex);
+    RotateTexture(config.rotation_tex);
+    PositionateTexture(config.position_tex);
+
+    model_m_ref = config.model_m_ref;
+    SetDrawMode(dmode);
+    Init();
+}
+
+void plane::Init(/* args */)
+{
+    glGenVertexArrays(1, &planeVAO);
+    glGenBuffers(1, &planeVBO);
+    glGenBuffers(1, &planeEBO);
+    glBindVertexArray(planeVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(Plane::Vertices), &Plane::Vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, planeEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Plane::Indices), &Plane::Indices, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    //glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void plane::setInstancePosBuffer(const unsigned int &buffer, const unsigned int &amount){
+
+        planeABO = buffer;
+        amount_i = amount;
+        
+        glBindVertexArray(planeVAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, planeABO);
+
+        // set attribute pointers for matrix (4 times vec4)
+        glEnableVertexAttribArray(7);
+        glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)0);
+        glEnableVertexAttribArray(8);
+        glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4)));
+        glEnableVertexAttribArray(9);
+        glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(2 * sizeof(glm::vec4)));
+        glEnableVertexAttribArray(10);
+        glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(3 * sizeof(glm::vec4)));
+
+        glVertexAttribDivisor(7, 1);
+        glVertexAttribDivisor(8, 1);
+        glVertexAttribDivisor(9, 1);
+        glVertexAttribDivisor(10, 1);
+
+        glBindVertexArray(0);
+
+}
+
+void plane::SetDrawMode(unsigned int mode){
+
+    switch(mode){
+        case (DRAW_UNTEXTURED) :
+            Draw_method = &plane::draw_untextured;
+            break;
+        case (DRAW_TEXTURED) :
+            Draw_method = &plane::draw_textured;
+            break;
+        case (DRAW_UNTEXTURED_INSTANCED) :
+            Draw_method = &plane::draw_untextured_instanced;
+            break;
+        case (DRAW_TEXTURED_INSTANCED) :
+            Draw_method = &plane::draw_textured_instanced;
+            break;
+        default:
+            Draw_method = &plane::draw_untextured;
+            break;
+
+    }
+
+}
+
+
+void plane::draw_untextured()
+{ 
+    localShader.use();
+
+    glBindVertexArray(planeVAO);
+    glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+void plane::draw_textured()
+{
+    localShader.use();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray(planeVAO);
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    glDrawElements(GL_TRIANGLE_STRIP, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+}
+void plane::draw_untextured_instanced()
+{ 
+
+    localShader.use();
+    glBindVertexArray(planeVAO);
+    glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, amount_i);
+    glBindVertexArray(0);
+  
+
+}
+void plane::draw_textured_instanced()
+{
+
+    localShader.use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindVertexArray(planeVAO);
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, amount_i);
+    glBindVertexArray(0);
+
+}
+
+
+void plane::Draw(){
+    (this->*Draw_method)();
+}
+
+void plane::SetTexture(unsigned int TexIndex){
+    localShader.setInt("texture_diffuse1", 0);
+    Texture = TexIndex;
+
+}
+
+void plane::SetTransform(){
+
+    localShader.use();
+    localShader.setMat4("model", model_m);
+
+
+}
+
+
+void plane::SetProjection(glm::mat4 &projection){
+
+    localShader.use();
+    localShader.setMat4("projection", projection);
+
+
+}
+
+void plane::SetView(glm::mat4 &view){
+
+    localShader.use();
+    localShader.setMat4("projection", view);
+
+
+}
+
+void plane::SetTextureTransform(){
+
+    localShader.use();
+    localShader.setMat3("model_tex", model_m_tex);
+
+
+}
+
+void plane::SetViewProjUBuffer(unsigned int biding){
+    
+    unsigned int uniformBlockIndexPlane = glGetUniformBlockIndex(localShader.ID, "Matrixes_vertex");
+
+    // then we link each shader's uniform block to this uniform binding point
+    glUniformBlockBinding(localShader.ID, uniformBlockIndexPlane, biding);
+}
+
+//void plane::SetViewProjUBuffer(unsigned int ubuffer, unsigned int offset, unsigned int biding){
+//    
+//    glBindBuffer(GL_UNIFORM_BUFFER, ubuffer);
+//    glBufferSubData(GL_UNIFORM_BUFFER, offset,sizeof(glm::mat4), glm::value_ptr(model_m));
+//    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//    
+//    unsigned int uniformBlockIndexPlane = glGetUniformBlockIndex(localShader.ID, "Matrixes_vertex");
+//
+//    // then we link each shader's uniform block to this uniform binding point
+//    glUniformBlockBinding(localShader.ID, uniformBlockIndexPlane, biding);
+//}
+
+
+//void plane::SetViewProjUBuffer(unsigned int ubuffer, unsigned int offset){
+//
+//    glBindBuffer(GL_UNIFORM_BUFFER, ubuffer);
+//    glBufferSubData(GL_UNIFORM_BUFFER, offset,sizeof(glm::mat4), glm::value_ptr(model_m));
+//    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+//}
+
+
+void plane::ScaleTexture(const glm::vec2 &scale_vector){
+
+    glm::vec2 scale_temp = scale_vector;
+    scale_temp.x = std::max(0.0001f,scale_temp.x);
+    scale_temp.y = std::max(0.0001f,scale_temp.y);
+
+    scale_tex = scale_temp;
+    
+
+    local_scale_matrix_tex = glm::scale(glm::mat3(1.0),scale_temp);
+    model_m_tex = local_pos_matrix_tex*local_rot_matrix_tex*local_scale_matrix_tex;
+
+}
+
+void plane::RotateTexture(const float &angle){
+
+    rotation_tex = angle;
+
+    local_rot_matrix_tex = glm::rotate(glm::mat3(1.0),angle);
+
+
+    model_m_tex = local_pos_matrix_tex*local_rot_matrix_tex*local_scale_matrix_tex;
+}
+
+void plane::PositionateTexture(const glm::vec2 &position_new){
+
+    position_tex = position_new;
+
+    local_pos_matrix_tex = glm::translate(glm::mat3(1.0),position_new);
+
+    model_m_tex = local_pos_matrix_tex*local_rot_matrix_tex*local_scale_matrix_tex;
+
+}
+
+
+void plane::GlobalScale(const glm::vec3 &scale_vector){
+
+
+    local_scale_matrix = glm::transpose(local_rot_matrix)*
+    glm::scale(glm::mat4(1.0),scale_vector)*local_rot_matrix*
+    local_scale_matrix;
+
+    scale.x = local_scale_matrix[0][0];
+    scale.y = local_scale_matrix[1][1];
+    scale.z = local_scale_matrix[2][2];
+
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+}
+
+void plane::GlobalRotate(const float roll, const float pitch, const float yaw){
+
+
+    glm::mat4 rot_temp = glm::rotate(glm::mat4(1.0),yaw,glm::vec3(0.0,1.0,0.0));
+    rot_temp = glm::rotate(rot_temp,pitch,glm::vec3(1.0,0.0,0.0));
+    rot_temp = glm::rotate(rot_temp,roll,glm::vec3(0.0,0.0,1.0));
+
+    local_rot_matrix = rot_temp*local_rot_matrix;
+
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+    
+    //extract rpy
+    float yaw_t, pitch_t, roll_t;
+
+    glm::extractEulerAngleXYZ(local_rot_matrix, pitch_t, yaw_t, roll_t);
+
+    rotation = glm::vec3(roll_t,pitch_t,yaw_t);
+
+}
+
+
+void plane::Scale(const glm::vec3 &scale_vector){
+
+    glm::vec3 scale_temp = scale_vector;
+    scale_temp.x = std::max(0.0001f,scale_temp.x);
+    scale_temp.y = std::max(0.0001f,scale_temp.y);
+    scale_temp.z = std::max(0.0001f,scale_temp.z);
+
+    scale *= scale_temp;
+    
+
+    local_scale_matrix = glm::scale(local_scale_matrix,scale_temp);
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+}
+
+void plane::Rotate(float angle,const glm::vec3 &rot_vector){
+
+    local_rot_matrix = glm::rotate(local_rot_matrix, angle, rot_vector);
+
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+    
+    //extract rpy
+    float yaw, pitch, roll;
+
+    glm::extractEulerAngleXYZ(local_rot_matrix, pitch, yaw, roll);
+
+    rotation = glm::vec3(roll,pitch,yaw);
+}
+
+void plane::Rotate(const float roll, const float pitch, const float yaw){
+
+    rotation += glm::vec3(roll,pitch,yaw);
+
+    local_rot_matrix = glm::rotate(glm::mat4(1.0),yaw,glm::vec3(0.0,1.0,0.0));
+    local_rot_matrix = glm::rotate(local_rot_matrix,pitch,glm::vec3(1.0,0.0,0.0));
+    local_rot_matrix = glm::rotate(local_rot_matrix,roll,glm::vec3(0.0,0.0,1.0));
+
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+}
+
+void plane::Rotate(const glm::vec3 rot){
+
+    rotation += rot;
+
+    local_rot_matrix = glm::rotate(glm::mat4(1.0),rot.z,glm::vec3(0.0,1.0,0.0));
+    local_rot_matrix = glm::rotate(local_rot_matrix,rot.y,glm::vec3(1.0,0.0,0.0));
+    local_rot_matrix = glm::rotate(local_rot_matrix,rot.x,glm::vec3(0.0,0.0,1.0));
+
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+}
+
+void plane::Tanslate(const glm::vec3 &translation){
+    
+    position += translation;
+
+    local_pos_matrix = glm::translate(local_pos_matrix,translation);
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+
+}
+
+void plane::ApplyAllTransfoms(){
+    
+    model_m_ref = model_m;
+
+    local_pos_matrix = local_rot_matrix = local_scale_matrix = glm::mat4(1.0);
+
+    scale = glm::vec3(1.0);
+    position = rotation = glm::vec3(0.0);
+
+}
+
+
+void plane::ApplyRotation(){
+    
+    model_m_ref = local_rot_matrix*local_scale_matrix*model_m_ref;
+
+    model_m_ref = glm::scale(model_m_ref,glm::vec3(1.0f/scale.x,1.0f/scale.y,1.0f/scale.z));
+
+    local_rot_matrix = glm::mat4(1.0);
+
+    rotation = glm::vec3(0.0);
+
+}
+
+void plane::ApplyTranslation(){
+    
+    model_m_ref = model_m;
+    
+    model_m_ref = glm::transpose(local_rot_matrix)*model_m_ref;
+
+    model_m_ref = glm::scale(model_m_ref,glm::vec3(1.0f/scale.x,1.0f/scale.y,1.0f/scale.z));
+
+    local_pos_matrix = glm::mat4(1.0);
+
+    rotation = glm::vec3(0.0);
+
+}
+
+void plane::ApplyScale(){
+    
+    model_m_ref = local_scale_matrix*model_m_ref;
+
+    local_scale_matrix = glm::mat4(1.0);
+
+    scale = glm::vec3(1.0);
+
+}
+
+
+glm::vec3 plane::Get_rotation(){
+    return rotation;
+}
+
+glm::vec3 plane::Get_position(){
+    return position;
+}
+
+glm::vec3 plane::Get_scale(){
+    return scale;
+}
+
+glm::mat4 plane::Get_model_matrix(){
+    return model_m;
+}
+
+glm::mat4 plane::Get_reference_model_matrix(){
+    return model_m_ref;
+}
+
+void plane::Change_rotation(const glm::vec3 &rotation_new){
+
+    rotation = rotation_new;
+    
+    local_rot_matrix = glm::rotate(glm::mat4(1.0),rotation_new.z,glm::vec3(0.0,1.0,0.0));
+    local_rot_matrix = glm::rotate(local_rot_matrix,rotation_new.y,glm::vec3(1.0,0.0,0.0));
+    local_rot_matrix = glm::rotate(local_rot_matrix,rotation_new.x,glm::vec3(0.0,0.0,1.0));
+ 
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+}
+
+void plane::Change_position(const glm::vec3 &position_new){
+
+    position = position_new;
+
+    local_pos_matrix = glm::translate(glm::mat4(1.0),position);
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+}
+
+void plane::Change_scale(const glm::vec3 &scale_vector){
+
+    glm::vec3 scale_temp = scale_vector;
+    scale_temp.x = std::max(0.0001f,scale_temp.x);
+    scale_temp.y = std::max(0.0001f,scale_temp.y);
+    scale_temp.z = std::max(0.0001f,scale_temp.z);
+
+    scale = scale_temp;
+    
+
+    local_scale_matrix = glm::scale(glm::mat4(1.0),scale_temp);
+    model_m = local_pos_matrix*local_rot_matrix*local_scale_matrix*model_m_ref;
+
+}
+
+void plane::Change_reference_model_matrix(const glm::mat4 &new_model){
+    model_m_ref = new_model;
+}
+
+void plane::Reset_reference_model_matrix(){
+    model_m_ref = glm::mat4(1.0f);
+}
+
+
+
+
+// renders (and builds at first invocation) a sphere
+// -------------------------------------------------
+
+void renderSphere(unsigned int &sphereVAO, unsigned int &indexCount)
+{   
+
+    if (sphereVAO == 0)
+    {
+        glGenVertexArrays(1, &sphereVAO);
+
+        unsigned int vbo, ebo;
+        glGenBuffers(1, &vbo);
+        glGenBuffers(1, &ebo);
+
+        std::vector<glm::vec3> positions;
+        std::vector<glm::vec2> uv;
+        std::vector<glm::vec3> normals;
+        std::vector<unsigned int> indices;
+
+        const unsigned int X_SEGMENTS = 64;
+        const unsigned int Y_SEGMENTS = 64;
+        const float PI = 3.14159265359f;
+        for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+        {
+            for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
+            {
+                float xSegment = (float)x / (float)X_SEGMENTS;
+                float ySegment = (float)y / (float)Y_SEGMENTS;
+                float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+                float yPos = std::cos(ySegment * PI);
+                float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+
+                positions.push_back(glm::vec3(xPos, yPos, zPos));
+                uv.push_back(glm::vec2(xSegment, ySegment));
+                normals.push_back(glm::vec3(xPos, yPos, zPos));
+            }
+        }
+
+        bool oddRow = false;
+        for (unsigned int y = 0; y < Y_SEGMENTS; ++y)
+        {
+            if (!oddRow) // even rows: y == 0, y == 2; and so on
+            {
+                for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
+                {
+                    indices.push_back(y * (X_SEGMENTS + 1) + x);
+                    indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+                }
+            }
+            else
+            {
+                for (int x = X_SEGMENTS; x >= 0; --x)
+                {
+                    indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+                    indices.push_back(y * (X_SEGMENTS + 1) + x);
+                }
+            }
+            oddRow = !oddRow;
+        }
+        indexCount = static_cast<unsigned int>(indices.size());
+
+        std::vector<float> data;
+        for (unsigned int i = 0; i < positions.size(); ++i)
+        {
+            data.push_back(positions[i].x);
+            data.push_back(positions[i].y);
+            data.push_back(positions[i].z);
+            if (normals.size() > 0)
+            {
+                data.push_back(normals[i].x);
+                data.push_back(normals[i].y);
+                data.push_back(normals[i].z);
+            }
+            if (uv.size() > 0)
+            {
+                data.push_back(uv[i].x);
+                data.push_back(uv[i].y);
+            }
+        }
+        glBindVertexArray(sphereVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+        unsigned int stride = (3 + 2 + 3) * sizeof(float);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    }
+
+    glBindVertexArray(sphereVAO);
+    glDrawElements(GL_TRIANGLE_STRIP, indexCount, GL_UNSIGNED_INT, 0);
+}
