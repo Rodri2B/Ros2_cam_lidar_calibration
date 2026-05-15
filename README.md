@@ -4,6 +4,11 @@ This repository contains the code developed for camera and lidar simulation and 
 
 The methodology used was based on two publications: ["Automatic extrinsic calibration between a camera and a 3D Lidar using 3D point and plane correspondences"](https://arxiv.org/abs/1904.12433) and ["Optimising the selection of samples for robust lidar camera calibration"](https://arxiv.org/abs/2103.12287). The first publication presents the methodology used for representing samples, establishing metrics, and performing the calibration itself. The second publication provided the metrics used to evaluate the quality of the selected samples, as well as the technique of dividing samples into small groups to assign them to the calibration algorithm in a way that maximizes the accuracy of the final calibration result.
 
+<br>
+
+
+### Simulation and Calibration Tools:
+
 
 <br>
 
@@ -21,11 +26,28 @@ The methodology used was based on two publications: ["Automatic extrinsic calibr
 
 <p align="center">
 <br>
-<em><b>Top:</b> Snapshot of the simulation interface. <b>Bottom:</b> Snapshot of the calibration interface.</em>
+<em><b>Top:</b> Snapshot of the simulation tool. <b>Bottom:</b> Snapshot of the calibration tool.</em>
 
 </p>
 
+<br>
 
+### Ros Interface:
+
+
+<br>
+
+<p align="center">
+<img src="img/ros_data_visualization.png" width="500" height="auto">
+</p>
+
+<p align="center">
+<br>
+<em><b>Figure:</b> Lidar point cloud and camera images visualized inside Rviz using the ROS-Simulator interface.</em>
+
+</p>
+
+<br>
 
 ### ⚠️ The Repository is under construction, not all resources have been uploaded and there is still work to be done!!!
 
