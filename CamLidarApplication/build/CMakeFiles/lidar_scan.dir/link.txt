@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -O3 -Wall -Wl,--dependency-file=CMakeFiles/lidar_scan.dir/link.d -shared -Wl,-soname,liblidar_scan.so -o liblidar_scan.so   -L/home/rodrigo/Libraries/pcl1.15.0/lib
