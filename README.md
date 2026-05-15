@@ -4,6 +4,29 @@ This repository contains the code developed for camera and lidar simulation and 
 
 The methodology used was based on two publications: ["Automatic extrinsic calibration between a camera and a 3D Lidar using 3D point and plane correspondences"](https://arxiv.org/abs/1904.12433) and ["Optimising the selection of samples for robust lidar camera calibration"](https://arxiv.org/abs/2103.12287). The first publication presents the methodology used for representing samples, establishing metrics, and performing the calibration itself. The second publication provided the metrics used to evaluate the quality of the selected samples, as well as the technique of dividing samples into small groups to assign them to the calibration algorithm in a way that maximizes the accuracy of the final calibration result.
 
+
+<br>
+
+<p align="center">
+<table align="center">
+  <tr>
+    <td><img src="img/simulator_interface.png" width="500" title="Mage 1"></td>
+  </tr>
+  <tr>
+    <td><img src="img/calibration_interface.png" width="500" title="Mage 2"></td>
+  </tr>
+</table>
+
+</p>
+
+<p align="center">
+<br>
+<em><b>Top:</b> Snapshot of the simulation interface. <b>Bottom:</b> Snapshot of the calibration interface.</em>
+
+</p>
+
+
+
 ### ⚠️ The Repository is under construction, not all resources have been uploaded and there is still work to be done!!!
 
 ### ✅ Tested and Functional
